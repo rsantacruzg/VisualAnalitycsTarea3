@@ -1,0 +1,235 @@
+<html>
+  <head>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+	<style>
+	svg {
+    font-family: Sans-Serif, Arial;
+}
+.line {
+  stroke-width: 2;
+  fill: none;
+}
+
+.axis path {
+  stroke: black;
+}
+
+.text {
+  font-size: 12px;
+}
+
+.title-text {
+  font-size: 12px;
+}
+	
+	</style>
+  </head>
+  <body>
+   <h1>TAREA3: Ricardo Santacruz </h1>
+  <h1> Cadena Productiva del Banano </h1>
+  <h2> Exportaciones 2006 - 2015</h2>
+    <div id="root"></div>
+  </body>
+  
+ <script>
+  
+var width = 500;
+var height = 300;
+var margin = 50;
+var duration = 250;
+
+
+/*Carga Data Set*/
+d3.json("https://www.datos.gov.co/resource/7h67-sdf4.json", function(error, data) {
+  if (error) throw error;
+
+  console.log("data load");
+  console.log(data);
+  
+   //console.log(JSON.stringify(data));
+
+/* Formato Date */
+var parseDate = d3.timeParse("%Y");
+
+
+/*convertir formato Date anio*/
+/*
+data.forEach(function(d) {
+     d.anio = parseDate(d.anio);
+	  });
+	  */
+
+  /*Ordenar Data Set por date anio*/
+  data.sort(function(x, y){
+   return d3.ascending(x.anio, y.anio);
+});
+
+  /*Agrupara por pais destion y por date anio*/
+  data = d3.nest()
+          .key(function(d) {return d.pa_sdestino;})
+           .key(function(d){return d.anio;})
+          .rollup(function(v) { return  d3.sum(v, function(d) { return +d.vol_mentoneladas});
+                 })
+          .entries(data);
+
+		   console.log("data agrupada");
+		    //console.log(JSON.stringify(data));
+			console.log(data);
+			
+/* Ecala de Tiempo eje x */
+var x = d3.scaleTime()
+  .domain(d3.extent(data[0].values, d => d.key))
+  .range([0, width-margin]);
+
+  /*Escala de linea por valor eje Y*/
+var y = d3.scaleLinear()
+  .domain([0, d3.max(data[0].values, d => d.value)])
+  .range([height-margin, 0]);
+
+  /*Escala ordinal de color eventos mouse */
+var color = d3.scaleOrdinal(d3.schemeCategory10);
+
+/* Se establecen  ejes x y  al svg*/
+var xAxis = d3.axisBottom(x).ticks(6);
+var yAxis = d3.axisLeft(y).ticks(5);
+
+/* Adicion SVG */
+var svg = d3.select("#root").append("svg")
+  .attr("width", (width+margin)+"px")
+  .attr("height", (height+margin)+"px")
+  .append('g')
+  .attr("transform", `translate(${margin}, ${margin})`);
+
+
+/* Linea entre años . valor */
+var line = d3.line()
+  .x(d => x(d.key))
+  .y(d => y(d.value));
+  
+  console.log("wwww");
+ 
+
+let lines = svg.append('g')
+  .attr('class', 'lines');
+
+lines.selectAll('.line-group')
+  .data(data).enter()
+  .append('g')
+  .attr('class', 'line-group') 
+  
+  /*evento on sobre la linea mustra pais*/  
+  .on("mouseover", function(d, i) {
+      svg.append("text")
+        .attr("class", "title-text")
+        .style("fill", color(i))        
+        .text(d.key)
+        .attr("text-anchor", "middle")
+        .attr("x", (width-margin)/2)
+        .attr("y", 5);
+    })
+	
+	/*evento out salida borrar titulo*/
+	 .on("mouseout", function(d) {
+      svg.select(".title-text").remove();
+    })
+	
+	/*se agrega  path para cada elemento del arreglo values*/
+	.append('path')
+  .attr('class', 'line')  
+  .attr('d', d => line(d.values))
+  .style('stroke', (d, i) => color(i))
+  .style('opacity', '0.25')
+  
+  /*eventos on y out cambia la opacidad*/
+   .on("mouseover", function(d) {
+      d3.selectAll('.line')
+					.style('opacity', '0.1');
+      d3.selectAll('.circle')
+					.style('opacity', '0.25');
+      d3.select(this)
+        .style('opacity', '0.5')
+        .style("stroke-width", '3')
+        .style("cursor", "pointer");
+    })
+	.on("mouseout", function(d) {
+      d3.selectAll(".line")
+					.style('opacity', '0.2');
+      d3.selectAll('.circle')
+					.style('opacity', '0.85');
+      d3.select(this)
+        .style("stroke-width", '1')
+        .style("cursor", "none");
+    });
+	
+	/* Adiciona puntos a la lienea */
+	lines.selectAll("circle-group")
+  .data(data).enter()
+  .append("g")
+  .style("fill", (d, i) => color(i))
+  .selectAll("circle")
+  .data(d => d.values).enter()
+  .append("g")
+  .attr("class", "circle") 
+  
+  /*evento on - valor cerca al punto*/
+.on("mouseover", function(d) {
+      d3.select(this)     
+        .style("cursor", "pointer")
+        .append("text")
+        .attr("class", "text")
+        .text(`${d.value}`)
+        .attr("x", d => x(d.key) + 10)
+        .attr("y", d => y(d.value) - 10);
+    })  
+	/*evento out remueve el valor*/
+	.on("mouseout", function(d) {
+      d3.select(this)
+        .style("cursor", "none")  
+        .transition()
+        .duration(duration)
+        .selectAll(".text").remove();
+    })
+	
+	/*adiciona el punto coordenada anio,valor */
+	.append("circle")
+  .attr("cx", d => x(d.key))
+  .attr("cy", d => y(d.value))
+  .attr("r", '5')
+  .style('opacity', '0.85')
+  .on("mouseover", function(d) {
+        d3.select(this)
+          .transition()
+          .duration(duration)
+          .attr("r", '6');
+      })
+    .on("mouseout", function(d) {
+        d3.select(this) 
+          .transition()
+          .duration(duration)
+          .attr("r", '5');  
+      });
+	
+/*Poner ejes*/
+
+svg.append("g")
+  .attr("class", "x axis")
+  .attr("transform", `translate(0, ${height-margin})`)
+  .call(xAxis);
+
+svg.append("g")
+  .attr("class", "y axis")
+  .call(yAxis)
+  .append('text')
+  .attr("y", 15)
+  .attr("x",20)
+  .attr("transform", "rotate(-90)")
+  .attr("fill", "#000")
+  .text("Total values");
+	
+	//console.log(data[2]);
+  
+  console.log(lines);
+  
+  });
+  </script>
+</html>

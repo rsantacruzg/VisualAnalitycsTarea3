@@ -1,0 +1,249 @@
+<html>
+  <head>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+	
+	<style>
+	svg {
+    font-family: Sans-Serif, Arial;
+}
+.line {
+  stroke-width: 2;
+  fill: none;
+}
+
+.axis path {
+  stroke: black;
+}
+
+.text {
+  font-size: 12px;
+}
+
+.title-text {
+  font-size: 12px;
+}
+	
+	</style>
+  </head>
+  <body>
+  <h1>TAREA3: Ricardo Santacruz </h1>
+  <h1> Cadena Productiva del Banano 
+  <h2> Exportaciones 2006 - 2015</h2>
+    <div id="root"></div>
+  </body>
+  <script>
+ var data = [
+  {
+    pais: "Japon",
+    values: [
+      {anio: "2006", valor: "296.87"},
+      {anio: "2007", valor: "673.9"},
+      {anio: "2008", valor: "515.98"},
+      {anio: "2009", valor: "441.26"},
+      {anio: "2010", valor: "271.99"},
+      {anio: "2011", valor: "179.39"},
+      {anio: "2012", valor: "687.59"},
+      {anio: "2013", valor: "936.84"},
+      {anio: "2014", valor: "312.1"},
+      {anio: "2015", valor: "438.29"},
+	 
+    ]
+  },
+  {
+    pais: "USA",
+    values: [
+      {anio: "2006", valor: "745.4"},
+      {anio: "2007", valor: "120.28"},
+      {anio: "2008", valor: "278.42"},
+      {anio: "2009", valor: "326.44"},
+      {anio: "2010", valor: "187.34"},
+      {anio: "2011", valor: "431.62"},
+      {anio: "2012", valor: "712.4"},
+      {anio: "2013", valor: "545"},
+      {anio: "2014", valor: "213"},
+      {anio: "2015", valor: "204.5"}
+    ]
+  },
+  {
+    pais: "Australia",
+    values: [
+      {anio: "2006", valor: "250.5"},
+      {anio: "2007", valor: "150.98"},
+      {anio: "2008", valor: "540.87"},
+      {anio: "2009", valor: "710.73"},
+      {anio: "2010", valor: "520.9"},
+      {anio: "2011", valor: "90.07"},
+      {anio: "2012", valor: "420.64"},
+      {anio: "2013", valor: "235.3"},
+      {anio: "2014", valor: "61.8"},
+      {anio: "2015", valor: "270.31"}
+	  
+    ]
+  }
+];
+
+var width = 500;
+var height = 300;
+var margin = 50;
+var duration = 250;
+
+/* Transformacion Datos */
+var parseDate = d3.timeParse("%Y");
+data.forEach(function(d) { 
+  d.values.forEach(function(d) {
+    d.anio = parseDate(d.anio);
+    d.valor = +d.valor;    
+  });
+});
+
+
+/* Ecala de Tiempo eje x */
+var x = d3.scaleTime()
+  .domain(d3.extent(data[0].values, d => d.anio))
+  .range([0, width-margin]);
+
+  /*Escala de linea por valor eje Y*/
+var y = d3.scaleLinear()
+  .domain([0, d3.max(data[0].values, d => d.valor)])
+  .range([height-margin, 0]);
+
+  /*Escala ordinal de color eventos mouse */
+var color = d3.scaleOrdinal(d3.schemeCategory10);
+
+/* Se establecen  ejes x y  al svg*/
+var xAxis = d3.axisBottom(x).ticks(6);
+var yAxis = d3.axisLeft(y).ticks(5);
+
+/* Adicion SVG */
+var svg = d3.select("#root").append("svg")
+  .attr("width", (width+margin)+"px")
+  .attr("height", (height+margin)+"px")
+  .append('g')
+  .attr("transform", `translate(${margin}, ${margin})`);
+
+
+/* Linea entre años . valor */
+var line = d3.line()
+  .x(d => x(d.anio))
+  .y(d => y(d.valor));
+
+let lines = svg.append('g')
+  .attr('class', 'lines');
+
+lines.selectAll('.line-group')
+  .data(data).enter()
+  .append('g')
+  .attr('class', 'line-group') 
+  
+/*evento on sobre la linea mustra pais*/  
+  .on("mouseover", function(d, i) {
+      svg.append("text")
+        .attr("class", "titulo")
+        .style("fill", color(i))        
+        .text(d.pais)
+        //.attr("text-anchor", "middle")
+        .attr("x", (width-margin)/2)
+        .attr("y", 5);
+    })
+	
+	/*evento out salida borrar titulo*/
+  .on("mouseout", function(d) {
+      svg.select(".titulo").remove();
+    })
+	
+	/*se agrega  path para cada elemento del arreglo values*/
+  .append('path')
+  .attr('class', 'line')  
+  .attr('d', d => line(d.values))
+  .style('stroke', (d, i) => color(i))
+  .style('opacity', '0.25')
+  
+  /*eventos on y out cambia la opacidad*/
+  .on("mouseover", function(d) {
+      d3.selectAll('.line')
+					.style('opacity', '0.1');
+      d3.selectAll('.circle')
+					.style('opacity', '0.25');
+      d3.select(this)
+        .style('opacity', '0.5')
+        .style("stroke-width", '3')
+        .style("cursor", "pointer");
+    })
+  .on("mouseout", function(d) {
+      d3.selectAll(".line")
+					.style('opacity', '0.2');
+      d3.selectAll('.circle')
+					.style('opacity', '0.85');
+      d3.select(this)
+        .style("stroke-width", '1')
+        .style("cursor", "none");
+    });
+
+
+/* Adiciona puntos a la lienea */
+lines.selectAll("circle-group")
+  .data(data).enter()
+  .append("g")
+  .style("fill", (d, i) => color(i))
+  .selectAll("circle")
+  .data(d => d.values).enter()
+  .append("g")
+  .attr("class", "circle")  
+  
+  /*evento on - valor cerca al punto*/
+  .on("mouseover", function(d) {
+      d3.select(this)     
+        .style("cursor", "pointer")
+        .append("text")
+        .attr("class", "text")
+        .text(`${d.valor}`)
+        .attr("x", d => x(d.anio)+10)
+        .attr("y", d => y(d.valor) - 10);
+    })
+	/*evento out remueve el valor*/
+  .on("mouseout", function(d) {
+      d3.select(this)
+        .style("cursor", "none")  
+        .transition()
+        .duration(duration)
+        .selectAll(".text").remove();
+    })
+	
+	/*adiciona el punto coordenada anio,valor */
+  .append("circle")
+  .attr("cx", d => x(d.anio))
+  .attr("cy", d => y(d.valor))
+  .attr("r", '5')
+  .style('opacity', '0.85')
+  .on("mouseover", function(d) {
+        d3.select(this)
+          .transition()
+          .duration(duration)
+          .attr("r", '6');
+      })
+    .on("mouseout", function(d) {
+        d3.select(this) 
+          .transition()
+          .duration(duration)
+          .attr("r", '5');  
+      });
+
+
+/*Poner ejes */
+
+svg.append("g")
+  .attr("class", "x axis")
+  .attr("transform", `translate(0, ${height-margin})`)
+  .call(xAxis);
+
+svg.append("g")
+  .attr("class", "y axis")
+  .call(yAxis)
+  .append('text')
+  .attr("y", 15)
+  .attr("x",20)
+  .attr("transform", "rotate(-90)")
+  .attr("fill", "#000")
+  .text("Total Toneladas");
+  </script>
+</html>
